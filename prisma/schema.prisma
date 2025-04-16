@@ -16,6 +16,8 @@ model User {
   role            Role           @default(USER)
   bio             String?
   profilePicture  String?
+  point           Int            @default(0)
+  expirationDate  DateTime?
   referralCode    String         @unique
   referredBy      Int?
   referee         User?          @relation("ReferralRelation", fields: [referredBy], references: [id])
@@ -25,7 +27,6 @@ model User {
   events          Event[]
   transactions    Transaction[]
   vouchers        Voucher[]
-  points          Point[]
   coupons         Coupon[]
   reviews         Review[]
   referralBonuses Referral[]
@@ -128,23 +129,13 @@ model Voucher {
   @@map("vouchers")
 }
 
-model Point {
-  id             Int      @id @default(autoincrement())
-  userId         Int
-  user           User     @relation(fields: [userId], references: [id])
-  amount         Int
-  expirationDate DateTime
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  @@map("points")
-}
-
 model Coupon {
   id             Int      @id @default(autoincrement())
   userId         Int
   user           User     @relation(fields: [userId], references: [id])
+  code           String
   amount         Int
+  discount       Int
   expirationDate DateTime
   status         String
   createdAt      DateTime @default(now())
