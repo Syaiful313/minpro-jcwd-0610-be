@@ -1,8 +1,8 @@
-// import { Router } from "express";
-// import { getSamplesController } from "../controllers/sample.controller";
+import { Router } from "express";
+import { getSamplesController } from "../controllers/sample.controller";
 
-// const router = Router();
+const router = Router();
 
-// router.get("/", getSamplesController);
+router.get("/", getSamplesController);
 
-// export default router;
+export default router;
