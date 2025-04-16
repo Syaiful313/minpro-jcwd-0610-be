@@ -1,7 +1,7 @@
-import prisma from "../../config/prisma";
+// import prisma from "../../config/prisma";
 
-export const getSamplesService = async () => {
-  const samples = await prisma.sample.findMany();
+// export const getSamplesService = async () => {
+//   const samples = await prisma.sample.findMany();
   
-  return samples;
-};
+//   return samples;
+// };
