@@ -8,7 +8,6 @@ export const verifyToken = (
   next: NextFunction
 ) => {
   const token = req.headers.authorization?.split(" ")[1];
-
   if (!token) {
     res.status(401).send({
       message: "Authorization failed, token is missing",

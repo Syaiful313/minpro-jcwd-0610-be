@@ -44,19 +44,17 @@ enum Role {
 
 model Event {
   id           Int           @id @default(autoincrement())
-  userId       Int
-  user         User          @relation(fields: [userId], references: [id])
+  organizerId  Int
+  organizer    Organizer     @relation(fields: [organizerId], references: [id])
   slug         String
   name         String
-  imageUrl     String
-  category     String
-  location     String
+  thumbnail    String
+  category     Category
+  location     Location
   description  String
-  price        Int
   startDate    DateTime
   endDate      DateTime
-  totalSeat    Int
-  thumbnail    String
+  // totalSeat    Int
   deletedAt    DateTime?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -64,8 +62,58 @@ model Event {
   vouchers     Voucher[]
   reviews      Review[]
   ticketTypes  TicketType[]
+  User         User?         @relation(fields: [userId], references: [id])
+  userId       Int?
 
   @@map("events")
+}
+
+enum Category {
+  Sports
+  Festivals
+  Concerts
+  Theater
+}
+
+enum Location {
+  ACEH
+  SUMATERA_UTARA
+  SUMATERA_BARAT
+  RIAU
+  JAMBI
+  SUMATERA_SELATAN
+  BENGKULU
+  LAMPUNG
+  KEPULAUAN_BANGKA_BELITUNG
+  KEPULAUAN_RIAU
+  DKI_JAKARTA
+  JAWA_BARAT
+  JAWA_TENGAH
+  DI_YOGYAKARTA
+  JAWA_TIMUR
+  BANTEN
+  BALI
+  NUSA_TENGGARA_BARAT
+  NUSA_TENGGARA_TIMUR
+  KALIMANTAN_BARAT
+  KALIMANTAN_TENGAH
+  KALIMANTAN_SELATAN
+  KALIMANTAN_TIMUR
+  KALIMANTAN_UTARA
+  SULAWESI_UTARA
+  SULAWESI_TENGAH
+  SULAWESI_SELATAN
+  SULAWESI_TENGGARA
+  GORONTALO
+  SULAWESI_BARAT
+  MALUKU
+  MALUKU_UTARA
+  PAPUA
+  PAPUA_BARAT
+  PAPUA_TENGAH
+  PAPUA_PEGUNUNGAN
+  PAPUA_SELATAN
+  PAPUA_BARAT_DAYA
 }
 
 model TicketType {
@@ -199,9 +247,10 @@ model Organizer {
   companyWebsite String
   companyAddress String
   details        String
-  acceptedAt     DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  acceptedAt     DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  events         Event[]
 
   @@map("organizers")
 }
