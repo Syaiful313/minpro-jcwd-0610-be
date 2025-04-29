@@ -1,10 +1,11 @@
 import multer from "multer";
 
-export const uploader = (filelimit: number = 2) => {
+export const uploader = (fileLimits: number = 2) => {
   const storage = multer.memoryStorage();
 
-  const limits = { fileSize: filelimit * 1024 * 1024 }; // defautl 2mb ikut file limit di parameter
+  const limits = {
+    fileSize: fileLimits * 1024 * 1024,
+  };
 
   return multer({ storage, limits });
 };
-

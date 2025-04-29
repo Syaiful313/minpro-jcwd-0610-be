@@ -1,11 +1,21 @@
-import { User } from "@prisma/client";
+import { User, Role } from "@prisma/client";
 import prisma from "../../config/prisma";
 import { hashPassword } from "../../lib/argon";
 import { ApiError } from "../../utils/api-error";
 import { nanoid } from "nanoid";
 
 export const registerService = async (
-  body: User & { referralCode?: string }
+  body: Omit<
+    User,
+    | "id"
+    | "createdAt"
+    | "updatedAt"
+    | "point"
+    | "expirationDate"
+    | "referralCode"
+  > & {
+    referralCode?: string;
+  }
 ) => {
   const existingUser = await prisma.user.findFirst({
     where: {
@@ -18,41 +28,73 @@ export const registerService = async (
   }
 
   const referralCode: string = nanoid(8);
-
   const hashedPassword = await hashPassword(body.password);
 
-  const user = await prisma.user.create({
-    data: { ...body, password: hashedPassword, referralCode },
-    omit: { password: true },
-  });
+  const { referralCode: inputReferralCode, ...userData } = body;
 
-  if (body.referralCode) {
+  let referredById = null;
+
+  if (inputReferralCode) {
     const referrer = await prisma.user.findFirst({
       where: {
-        referralCode: body.referralCode,
+        referralCode: inputReferralCode,
       },
     });
 
     if (referrer) {
-      await prisma.coupon.create({
-        data: {
-          userId: user.id,
-          code: `WELCOME-${nanoid(6)}`,
-          discount: 10,
-          expirationDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-          status: "active",
-          amount: 1,
-        },
-      });
+      referredById = referrer.id;
+    }
+  }
 
+  const user = await prisma.user.create({
+    data: {
+      ...userData,
+      password: hashedPassword,
+      referralCode,
+      referredBy: referredById,
+      role: userData.role || Role.USER,
+    },
+  });
+
+  if (referredById) {
+    await prisma.referral.create({
+      data: {
+        userId: user.id,
+        pointsAwarded: 10000,
+        discountCoupon: `WELCOME-${nanoid(8)}`,
+      },
+    });
+
+    await prisma.coupon.create({
+      data: {
+        userId: user.id,
+        code: `WELCOME-${nanoid(8)}`,
+        discount: 10,
+        amount: 1,
+        expirationDate: new Date(
+          new Date().setMonth(new Date().getMonth() + 3)
+        ),
+        isUsed: false,
+      },
+    });
+
+    const referrer = await prisma.user.findUnique({
+      where: { id: referredById },
+    });
+
+    if (referrer) {
       await prisma.user.update({
         where: { id: referrer.id },
         data: {
-          point: (referrer.point || 0) + 10000,
+          point: referrer.point + 10000,
+          expirationDate: new Date(
+            new Date().setMonth(new Date().getMonth() + 3)
+          ),
         },
       });
     }
   }
 
-  return user;
+  const { password, ...userWithoutPassword } = user;
+  return userWithoutPassword;
 };
