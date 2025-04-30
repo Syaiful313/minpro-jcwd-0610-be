@@ -1,73 +1,41 @@
-import jwt from "jsonwebtoken";
-import { JWT_SECRET_KEY } from "../../config/env";
 import prisma from "../../config/prisma";
 import { cloudinaryRemove, cloudinaryUpload } from "../../lib/cloudinary";
-import { ApiError } from "../../utils/api-error";
 
-interface TokenPayload {
-  id: number;
-  email: string;
-  role: string;
-}
-
-interface ProfileUpdateData {
-  fullName?: string;
-  bio?: string;
-  profilePicture?: string;
+interface UpdateProfileBody {
+  fullname: string;
+  bio: string;
 }
 
 export const updateProfileService = async (
-  token: string,
-  data: ProfileUpdateData,
-  profilePictureFile?: Express.Multer.File
+  body: UpdateProfileBody,
+  profilePicture: Express.Multer.File | undefined,
+  userId: number
 ) => {
-  if (!token) throw new ApiError(401, "Authentication token is required");
-
   try {
-    const decoded = jwt.verify(token, JWT_SECRET_KEY!) as TokenPayload;
-    const userId = decoded.id;
-
-    if (!userId) throw new ApiError(400, "Invalid token payload");
-
-    if (Object.keys(data).length === 0 && !profilePictureFile) {
-      throw new ApiError(400, "No profile data provided for update");
-    }
-
-    const currentUser = await prisma.user.findUnique({
+    const user = await prisma.user.findFirst({
       where: { id: userId },
-      select: { profilePicture: true },
     });
 
-    if (!currentUser) {
-      throw new ApiError(404, "User not found");
+    if (!user) {
+      throw new Error("Invalid user id");
     }
 
-    if (profilePictureFile) {
-      if (currentUser.profilePicture) {
-        await cloudinaryRemove(currentUser.profilePicture);
+    let secure_url: string | undefined;
+    if (profilePicture) {
+      if (user.profilePicture !== null) {
+        await cloudinaryRemove(user.profilePicture);
       }
 
-      const cloudinaryResponse = await cloudinaryUpload(profilePictureFile);
-
-      data.profilePicture = cloudinaryResponse.secure_url;
+      const uploadResult = await cloudinaryUpload(profilePicture);
+      secure_url = uploadResult.secure_url;
     }
 
     await prisma.user.update({
       where: { id: userId },
-      data,
-      select: {
-        id: true,
-        fullName: true,
-        email: true,
-        bio: true,
-        profilePicture: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      data: secure_url ? { ...body, profilePicture: secure_url } : body,
     });
 
-    return { message: "Profile updated successfully" };
+    return { message: "Update profile success" };
   } catch (error) {
     throw error;
   }

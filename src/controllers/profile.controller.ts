@@ -13,16 +13,13 @@ export const getProfileController = async (
   next: NextFunction
 ) => {
   try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(" ")[1];
-    const result = await getProfileService(token!);
+    const userId = Number(res.locals.user.id);
+    const result = await getProfileService(userId);
     res.status(200).send(result);
   } catch (error) {
     next(error);
   }
 };
-
-
 
 export const updateProfileController = async (
   req: Request,
@@ -30,39 +27,15 @@ export const updateProfileController = async (
   next: NextFunction
 ) => {
   try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(" ")[1];
-
-    if (!token) {
-      res.status(401).json({
-        status: "error",
-        message: "Authentication token is required",
-      });
-      return;
-    }
-
-    const updateData: {
-      fullName?: string;
-      bio?: string;
-    } = {};
-
-    if (req.body.fullName) updateData.fullName = req.body.fullName;
-    if (req.body.bio) updateData.bio = req.body.bio;
-
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-    const profilePictureFile = files?.profilePicture?.[0];
+    const files = req.files as { [fieldName: string]: Express.Multer.File[] };
 
     const result = await updateProfileService(
-      token,
-      updateData,
-      profilePictureFile
+      req.body,
+      files.profilePicture?.[0],
+      res.locals.user.id
     );
 
-    res.status(200).json({
-      status: "success",
-      message: "Profile updated successfully",
-      data: result,
-    });
+    res.status(200).send(result);
   } catch (error) {
     next(error);
   }

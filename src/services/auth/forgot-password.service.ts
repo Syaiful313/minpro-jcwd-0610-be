@@ -23,7 +23,7 @@ export const ForgotPasswordService = async (body: Pick<User, "email">) => {
       expiresIn: "15m",
     });
 
-    const link = `${BASE_URL_FE}/auth/reset-password/${token}`;
+    const link = `${BASE_URL_FE}/reset-password/${token}`;
 
     transporter.sendMail({
       to: email,

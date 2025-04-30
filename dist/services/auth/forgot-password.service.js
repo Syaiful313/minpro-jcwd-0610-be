@@ -32,7 +32,7 @@ const ForgotPasswordService = (body) => __awaiter(void 0, void 0, void 0, functi
         const token = (0, jsonwebtoken_1.sign)({ id: user.id }, env_1.JWT_SECRET_FORGOT_PASSWORD, {
             expiresIn: "15m",
         });
-        const link = `${env_1.BASE_URL_FE}/auth/reset-password/${token}`;
+        const link = `${env_1.BASE_URL_FE}/reset-password/${token}`;
         nodemailer_1.transporter.sendMail({
             to: email,
             subject: "Link Reset Password",
