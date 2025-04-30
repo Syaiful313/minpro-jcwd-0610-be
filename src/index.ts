@@ -10,6 +10,7 @@ import eventRouter from "./routes/event.router";
 import profileRouter from "./routes/profile.router";
 import referralRouter from "./routes/referral.router";
 import couponRouter from "./routes/coupon.router";
+import dashboardEventRouter from "./routes/dashboard-organizer.router";
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use("/auth", authRouter);
 app.use("/profiles", profileRouter);
 app.use("/referrals", referralRouter);
 app.use("/coupons", couponRouter);
+app.use("/organizer/events", dashboardEventRouter);
 
 app.use(errorMiddleware);
 

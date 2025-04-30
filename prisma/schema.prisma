@@ -54,7 +54,7 @@ model Event {
   description  String
   startDate    DateTime
   endDate      DateTime
-  // totalSeat    Int
+  totalSeat    Int
   deletedAt    DateTime?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -247,7 +247,7 @@ model Organizer {
   companyWebsite String
   companyAddress String
   details        String
-  acceptedAt     DateTime
+  acceptedAt     DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   events         Event[]
