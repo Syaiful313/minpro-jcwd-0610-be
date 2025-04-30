@@ -13,7 +13,7 @@ export const getEventsController = async (
   try {
     const query = {
       page: parseInt(req.query.page as string) || 1,
-      take: parseInt(req.query.take as string) || 3,
+      take: parseInt(req.query.take as string) || 4,
       sortOrder: (req.query.sortOrder as string) || "desc",
       sortBy: (req.query.sortBy as string) || "createdAt",
       search: (req.query.search as string) || "",
