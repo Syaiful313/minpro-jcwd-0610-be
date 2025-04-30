@@ -23,7 +23,7 @@ export const getOrganizerEventsService = async (
     throw new ApiError(403, "User is not an organizer");
   }
 
-  const { page, take, sortBy, sortOrder, search } = queries;
+  const { page, take, sortBy, sortOrder, search} = queries;
 
   const whereClause: Prisma.EventWhereInput = {
     userId,

@@ -1,8 +1,10 @@
 import express from "express";
 import { PORT } from "./config/env";
 import { errorMiddleware } from "./middlewares/error.middleware";
+
 import sampleRouter from "./routes/sample.router";
 import authRouter from "./routes/auth.router";
+
 import cors from "cors";
 import eventRouter from "./routes/event.router";
 import profileRouter from "./routes/profile.router";
