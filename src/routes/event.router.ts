@@ -16,7 +16,7 @@ router.get("/", getEventsController);
 router.get("/:slug", getEventBySlugController);
 router.delete("/:id", verifyToken, deleteEventController);
 router.post(
-  "/createEvent",
+  "/createevent",
   verifyToken,
   uploader().fields([{ name: "thumbnail", maxCount: 1 }]),
   fileFilter,

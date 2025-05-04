@@ -31,7 +31,6 @@ export const verifyToken = (
         return;
       }
     }
-
     res.locals.user = payload;
 
     next();

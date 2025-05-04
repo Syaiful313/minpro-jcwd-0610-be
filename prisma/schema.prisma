@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
   // directUrl = env("DIRECT_URL")
 }
 
@@ -54,7 +54,7 @@ model Event {
   description  String
   startDate    DateTime
   endDate      DateTime
-  totalSeat    Int
+  totalSeat    Int?
   deletedAt    DateTime?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -164,17 +164,19 @@ enum TransactionStatus {
 }
 
 model Voucher {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id])
-  eventId   Int
-  event     Event    @relation(fields: [eventId], references: [id])
-  code      String   @unique
-  discount  Int
-  startDate DateTime
-  endDate   DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+  eventId    Int
+  event      Event    @relation(fields: [eventId], references: [id])
+  code       String   @unique
+  discount   Int
+  maxUsage   Int 
+  usageCount Int      @default(0)
+  startDate  DateTime
+  endDate    DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@map("vouchers")
 }
@@ -248,8 +250,8 @@ model Organizer {
   companyAddress String
   details        String
   acceptedAt     DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
   events         Event[]
 
   @@map("organizers")

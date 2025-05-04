@@ -77,13 +77,13 @@ export const getOrganizerEventsService = async (
         },
       });
 
-      const availableSeats = event.totalSeat - (soldSeats._sum.quantity || 0);
+      // const availableSeats = event.totalSeat - (soldSeats._sum.quantity || 0);
 
       return {
         ...event,
         transactionCount: event._count.transactions,
         transactionStats,
-        availableSeats,
+        // availableSeats,
         _count: undefined,
       };
     })
