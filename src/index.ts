@@ -1,16 +1,15 @@
 import express from "express";
 import { PORT } from "./config/env";
 import { errorMiddleware } from "./middlewares/error.middleware";
-
 import sampleRouter from "./routes/sample.router";
 import authRouter from "./routes/auth.router";
-
 import cors from "cors";
 import eventRouter from "./routes/event.router";
 import profileRouter from "./routes/profile.router";
 import referralRouter from "./routes/referral.router";
 import couponRouter from "./routes/coupon.router";
 import dashboardEventRouter from "./routes/dashboard-organizer.router";
+import "./scripts/pointsExpiryScheduler";
 
 const app = express();
 

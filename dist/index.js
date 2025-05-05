@@ -14,6 +14,7 @@ const profile_router_1 = __importDefault(require("./routes/profile.router"));
 const referral_router_1 = __importDefault(require("./routes/referral.router"));
 const coupon_router_1 = __importDefault(require("./routes/coupon.router"));
 const dashboard_organizer_router_1 = __importDefault(require("./routes/dashboard-organizer.router"));
+require("./scripts/pointsExpiryScheduler");
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());

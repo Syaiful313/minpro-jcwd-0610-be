@@ -56,7 +56,7 @@ interface CreateEventBody {
   location: string;
   startDate: string;
   endDate: string;
-  totalSeat: string;
+  // totalSeat: string;
   tickets: string; // stringified JSON
   vouchers: string; // stringified JSON
 }
@@ -97,7 +97,7 @@ export const createEventService = async (
   }
 
   const vouchers = body.vouchers ? JSON.parse(body.vouchers) : [];
-  const totalSeat = parseInt(body.totalSeat);
+  // const totalSeat = parseInt(body.totalSeat);
 
   // Buat event
   const newEvent = await prisma.event.create({
@@ -108,7 +108,7 @@ export const createEventService = async (
       location: body.location as Location,
       startDate: new Date(body.startDate),
       endDate: new Date(body.endDate),
-      totalSeat,
+      // totalSeat,
       thumbnail: secure_url,
       slug,
       organizerId: organizer.id,
