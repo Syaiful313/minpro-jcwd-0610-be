@@ -70,8 +70,6 @@ export const createEventController = async (
 
 
     const userId = res.locals.user.id;
-    console.log("userId");
-    console.log(userId);
     const result = await createEventService(req.body, thumbnail, userId);
     res.status(200).send(result);
   } catch (error) {
