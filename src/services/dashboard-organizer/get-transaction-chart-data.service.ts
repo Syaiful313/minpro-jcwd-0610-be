@@ -1,10 +1,7 @@
-// src/services/transactionStatusChartService.ts
-
 import prisma from "../../config/prisma";
-import { TransactionStatus } from "@prisma/client";
 
 interface GetTransactionStatusChartQuery {
-  timeRange: "7d" | "30d" | "90d" | "365d"; // Menambahkan opsi 365d
+  timeRange: "7d" | "30d" | "90d" | "365d";
 }
 
 interface TransactionStatusChartData {
@@ -26,7 +23,6 @@ export const getTransactionStatusChartService = async (
     let transactions;
 
     if (timeRange === "365d") {
-      // Query untuk 1 tahun terakhir
       transactions = await prisma.$queryRaw`
         SELECT 
           DATE("createdAt") AS "date",
@@ -94,8 +90,10 @@ export const getTransactionStatusChartService = async (
       throw new Error("Parameter timeRange tidak valid");
     }
 
-    // Memastikan semua tanggal dalam rentang waktu terisi
-    const result = await fillMissingDates(transactions as TransactionStatusChartData[], timeRange);
+    const result = await fillMissingDates(
+      transactions as TransactionStatusChartData[],
+      timeRange
+    );
 
     return {
       data: result,
@@ -106,7 +104,6 @@ export const getTransactionStatusChartService = async (
   }
 };
 
-// Fungsi untuk mengisi tanggal yang hilang (tidak ada transaksi) dengan nilai 0
 const fillMissingDates = async (
   data: TransactionStatusChartData[],
   timeRange: "7d" | "30d" | "90d" | "365d"
@@ -120,23 +117,20 @@ const fillMissingDates = async (
   else if (timeRange === "90d") days = 90;
   else if (timeRange === "365d") days = 365;
 
-  // Membuat array tanggal untuk seluruh rentang waktu yang diminta
   for (let i = days - 1; i >= 0; i--) {
     const date = new Date();
     date.setDate(today.getDate() - i);
-    
-    // Format tanggal ke bentuk YYYY-MM-DD
-    const formattedDate = date.toISOString().split('T')[0];
-    
-    // Cari data untuk tanggal ini
+
+    const formattedDate = date.toISOString().split("T")[0];
+
     const found = data.find(
-      (item) => new Date(item.date).toISOString().split('T')[0] === formattedDate
+      (item) =>
+        new Date(item.date).toISOString().split("T")[0] === formattedDate
     );
-    
+
     if (found) {
       result.push(found);
     } else {
-      // Jika tidak ada data untuk tanggal ini, masukkan dengan nilai 0
       result.push({
         date: formattedDate,
         waiting: 0,
@@ -144,7 +138,7 @@ const fillMissingDates = async (
         done: 0,
         rejected: 0,
         canceled: 0,
-        expired: 0
+        expired: 0,
       });
     }
   }
