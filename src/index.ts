@@ -12,8 +12,11 @@ import dashboardEventRouter from "./routes/dashboard-organizer.router";
 import adminRouter from "./routes/admin.router";
 import transactionRouter from "./routes/transaction.router";
 import "./scripts/pointsExpiryScheduler";
+import startTransactionExpirationJob from "./utils/scheduler";
 
 const app = express();
+
+startTransactionExpirationJob();
 
 app.use(cors());
 app.use(express.json());
@@ -29,6 +32,7 @@ app.use("/admin", adminRouter);
 app.use("/transactions",transactionRouter );
 
 app.use(errorMiddleware);
+
 
 app.listen(PORT, () => {
   console.log(`Server listening on port : ${PORT}`);

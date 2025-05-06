@@ -1,8 +1,9 @@
 import { NextFunction, Request, Response } from "express";
-import { getSamplesService } from "../services/sample/get-samples.service";
-import { ApiError } from "../utils/api-error";
 import createTransactionService from "../services/transaction/create-transaction.service";
-import prisma from "../config/prisma";
+import getTransactionByIdService from "../services/transaction/get-transactionById.service";
+import uploadPaymentProofService from "../services/transaction/upload-payment-proof.service";
+import { cloudinaryUpload } from "../lib/cloudinary";
+import { ApiError } from "../utils/api-error";
 
 export const createTransactionController = async (
     req: Request,
@@ -20,3 +21,67 @@ export const createTransactionController = async (
       next(error);
     }
   };
+
+
+export const getTransactionByIdController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const transactionId = Number(req.params.id);
+
+    if (isNaN(transactionId)) {
+       res.status(400).json({ message: "ID transaksi tidak valid" });
+    }
+
+    const transaction = await getTransactionByIdService(transactionId);
+
+    if (!transaction) {
+      res.status(404).json({ message: "Transaksi tidak ditemukan" });
+    }
+
+    res.status(200).json(transaction);
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+
+export const uploadPaymentProofController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const authUserId = Number(res.locals.user.id); // Sesuaikan cara ambil user
+    const transactionId = Number(req.params.id);
+
+    const file = req.file;
+
+    if (!file) {
+      throw new ApiError(400, "Bukti pembayaran wajib diupload");
+    }
+
+    // ✅ Upload ke Cloudinary menggunakan fungsi yang sudah ada
+    const result = await cloudinaryUpload(file);
+
+    // Ambil URL publik dari hasil upload
+    const paymentProofUrl = result.secure_url;
+
+    // Kirim ke service
+    const updatedTransaction = await uploadPaymentProofService(authUserId, {
+      transactionId,
+      proofUrl: paymentProofUrl,
+    });
+
+    res.status(200).json({
+      message: "Bukti pembayaran berhasil diupload",
+      data: updatedTransaction,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
