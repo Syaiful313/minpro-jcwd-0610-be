@@ -2,21 +2,21 @@ import { Router } from "express";
 import {
   createEventController,
   deleteEventController,
+  getEventByIdController,
   getEventBySlugController,
-  getEventController,
   getEventsController,
   updateEventController,
 } from "../controllers/event.controller";
 import { fileFilter } from "../lib/fileFilter";
 import { verifyToken } from "../lib/jwt";
 import { uploader } from "../lib/multer";
-import { validateCreateEvent } from "../validators/event.validator";
+import { validateCreateEvent, validateUpdateEvent } from "../validators/event.validator";
 
 const router = Router();
 
 router.get("/", getEventsController);
 router.get("/:slug", getEventBySlugController);
-router.get("/:id", getEventController);
+router.get("/id/:id", verifyToken, getEventByIdController);
 router.post(
   "/createevent",
   verifyToken,
@@ -26,11 +26,11 @@ router.post(
   createEventController
 );
 router.patch(
-  "/:id",
+  "/update/:id",
   verifyToken,
   uploader().fields([{ name: "thumbnail", maxCount: 1 }]),
   fileFilter,
-  validateCreateEvent,
+  validateUpdateEvent,
   updateEventController
 );
 router.delete("/:id", verifyToken, deleteEventController);
