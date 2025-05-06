@@ -64,6 +64,7 @@ export const createEventService = async (
       thumbnail: secure_url,
       slug,
       organizerId: organizer.id,
+      userId: userId,
     },
   });
 
