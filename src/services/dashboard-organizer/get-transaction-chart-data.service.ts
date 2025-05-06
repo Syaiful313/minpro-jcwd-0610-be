@@ -15,74 +15,103 @@ interface TransactionStatusChartData {
 }
 
 export const getTransactionStatusChartService = async (
-  query: GetTransactionStatusChartQuery
+  query: GetTransactionStatusChartQuery,
+  userId: number
 ) => {
   try {
     const { timeRange } = query;
+
+    const user = await prisma.user.findFirst({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new Error("Invalid user id");
+    }
+
+    if (user.role !== "ORGANIZER") {
+      throw new Error("You are not an organizer");
+    }
+
+    const organizer = await prisma.organizer.findUnique({
+      where: { userId: userId },
+    });
+
+    if (!organizer) {
+      throw new Error("Organizer data not found");
+    }
 
     let transactions;
 
     if (timeRange === "365d") {
       transactions = await prisma.$queryRaw`
         SELECT 
-          DATE("createdAt") AS "date",
-          SUM(CASE WHEN "status" = 'WAITING_FOR_PAYMENT' THEN 1 ELSE 0 END)::int AS "waiting",
-          SUM(CASE WHEN "status" = 'WAITING_FOR_ADMIN_CONFIRMATION' THEN 1 ELSE 0 END)::int AS "confirmed",
-          SUM(CASE WHEN "status" = 'DONE' THEN 1 ELSE 0 END)::int AS "done",
-          SUM(CASE WHEN "status" = 'REJECTED' THEN 1 ELSE 0 END)::int AS "rejected",
-          SUM(CASE WHEN "status" = 'CANCELED' THEN 1 ELSE 0 END)::int AS "canceled",
-          SUM(CASE WHEN "status" = 'EXPIRED' THEN 1 ELSE 0 END)::int AS "expired"
-        FROM "transactions"
+          DATE(t."createdAt") AS "date",
+          SUM(CASE WHEN t."status" = 'WAITING_FOR_PAYMENT' THEN 1 ELSE 0 END)::int AS "waiting",
+          SUM(CASE WHEN t."status" = 'WAITING_FOR_ADMIN_CONFIRMATION' THEN 1 ELSE 0 END)::int AS "confirmed",
+          SUM(CASE WHEN t."status" = 'DONE' THEN 1 ELSE 0 END)::int AS "done",
+          SUM(CASE WHEN t."status" = 'REJECTED' THEN 1 ELSE 0 END)::int AS "rejected",
+          SUM(CASE WHEN t."status" = 'CANCELED' THEN 1 ELSE 0 END)::int AS "canceled",
+          SUM(CASE WHEN t."status" = 'EXPIRED' THEN 1 ELSE 0 END)::int AS "expired"
+        FROM "transactions" t
+        JOIN "events" e ON t."eventId" = e."id"
         WHERE 
-          "createdAt" >= NOW() - INTERVAL '365 days'
+          t."createdAt" >= NOW() - INTERVAL '365 days'
+          AND e."organizerId" = ${organizer.id}
         GROUP BY "date"
         ORDER BY "date";
       `;
     } else if (timeRange === "90d") {
       transactions = await prisma.$queryRaw`
         SELECT 
-          DATE("createdAt") AS "date",
-          SUM(CASE WHEN "status" = 'WAITING_FOR_PAYMENT' THEN 1 ELSE 0 END)::int AS "waiting",
-          SUM(CASE WHEN "status" = 'WAITING_FOR_ADMIN_CONFIRMATION' THEN 1 ELSE 0 END)::int AS "confirmed",
-          SUM(CASE WHEN "status" = 'DONE' THEN 1 ELSE 0 END)::int AS "done",
-          SUM(CASE WHEN "status" = 'REJECTED' THEN 1 ELSE 0 END)::int AS "rejected",
-          SUM(CASE WHEN "status" = 'CANCELED' THEN 1 ELSE 0 END)::int AS "canceled",
-          SUM(CASE WHEN "status" = 'EXPIRED' THEN 1 ELSE 0 END)::int AS "expired"
-        FROM "transactions"
+          DATE(t."createdAt") AS "date",
+          SUM(CASE WHEN t."status" = 'WAITING_FOR_PAYMENT' THEN 1 ELSE 0 END)::int AS "waiting",
+          SUM(CASE WHEN t."status" = 'WAITING_FOR_ADMIN_CONFIRMATION' THEN 1 ELSE 0 END)::int AS "confirmed",
+          SUM(CASE WHEN t."status" = 'DONE' THEN 1 ELSE 0 END)::int AS "done",
+          SUM(CASE WHEN t."status" = 'REJECTED' THEN 1 ELSE 0 END)::int AS "rejected",
+          SUM(CASE WHEN t."status" = 'CANCELED' THEN 1 ELSE 0 END)::int AS "canceled",
+          SUM(CASE WHEN t."status" = 'EXPIRED' THEN 1 ELSE 0 END)::int AS "expired"
+        FROM "transactions" t
+        JOIN "events" e ON t."eventId" = e."id"
         WHERE 
-          "createdAt" >= NOW() - INTERVAL '90 days'
+          t."createdAt" >= NOW() - INTERVAL '90 days'
+          AND e."organizerId" = ${organizer.id}
         GROUP BY "date"
         ORDER BY "date";
       `;
     } else if (timeRange === "30d") {
       transactions = await prisma.$queryRaw`
         SELECT 
-          DATE("createdAt") AS "date",
-          SUM(CASE WHEN "status" = 'WAITING_FOR_PAYMENT' THEN 1 ELSE 0 END)::int AS "waiting",
-          SUM(CASE WHEN "status" = 'WAITING_FOR_ADMIN_CONFIRMATION' THEN 1 ELSE 0 END)::int AS "confirmed",
-          SUM(CASE WHEN "status" = 'DONE' THEN 1 ELSE 0 END)::int AS "done",
-          SUM(CASE WHEN "status" = 'REJECTED' THEN 1 ELSE 0 END)::int AS "rejected",
-          SUM(CASE WHEN "status" = 'CANCELED' THEN 1 ELSE 0 END)::int AS "canceled",
-          SUM(CASE WHEN "status" = 'EXPIRED' THEN 1 ELSE 0 END)::int AS "expired"
-        FROM "transactions"
+          DATE(t."createdAt") AS "date",
+          SUM(CASE WHEN t."status" = 'WAITING_FOR_PAYMENT' THEN 1 ELSE 0 END)::int AS "waiting",
+          SUM(CASE WHEN t."status" = 'WAITING_FOR_ADMIN_CONFIRMATION' THEN 1 ELSE 0 END)::int AS "confirmed",
+          SUM(CASE WHEN t."status" = 'DONE' THEN 1 ELSE 0 END)::int AS "done",
+          SUM(CASE WHEN t."status" = 'REJECTED' THEN 1 ELSE 0 END)::int AS "rejected",
+          SUM(CASE WHEN t."status" = 'CANCELED' THEN 1 ELSE 0 END)::int AS "canceled",
+          SUM(CASE WHEN t."status" = 'EXPIRED' THEN 1 ELSE 0 END)::int AS "expired"
+        FROM "transactions" t
+        JOIN "events" e ON t."eventId" = e."id"
         WHERE 
-          "createdAt" >= NOW() - INTERVAL '30 days'
+          t."createdAt" >= NOW() - INTERVAL '30 days'
+          AND e."organizerId" = ${organizer.id}
         GROUP BY "date"
         ORDER BY "date";
       `;
     } else if (timeRange === "7d") {
       transactions = await prisma.$queryRaw`
         SELECT 
-          DATE("createdAt") AS "date",
-          SUM(CASE WHEN "status" = 'WAITING_FOR_PAYMENT' THEN 1 ELSE 0 END)::int AS "waiting",
-          SUM(CASE WHEN "status" = 'WAITING_FOR_ADMIN_CONFIRMATION' THEN 1 ELSE 0 END)::int AS "confirmed",
-          SUM(CASE WHEN "status" = 'DONE' THEN 1 ELSE 0 END)::int AS "done",
-          SUM(CASE WHEN "status" = 'REJECTED' THEN 1 ELSE 0 END)::int AS "rejected",
-          SUM(CASE WHEN "status" = 'CANCELED' THEN 1 ELSE 0 END)::int AS "canceled",
-          SUM(CASE WHEN "status" = 'EXPIRED' THEN 1 ELSE 0 END)::int AS "expired"
-        FROM "transactions"
+          DATE(t."createdAt") AS "date",
+          SUM(CASE WHEN t."status" = 'WAITING_FOR_PAYMENT' THEN 1 ELSE 0 END)::int AS "waiting",
+          SUM(CASE WHEN t."status" = 'WAITING_FOR_ADMIN_CONFIRMATION' THEN 1 ELSE 0 END)::int AS "confirmed",
+          SUM(CASE WHEN t."status" = 'DONE' THEN 1 ELSE 0 END)::int AS "done",
+          SUM(CASE WHEN t."status" = 'REJECTED' THEN 1 ELSE 0 END)::int AS "rejected",
+          SUM(CASE WHEN t."status" = 'CANCELED' THEN 1 ELSE 0 END)::int AS "canceled",
+          SUM(CASE WHEN t."status" = 'EXPIRED' THEN 1 ELSE 0 END)::int AS "expired"
+        FROM "transactions" t
+        JOIN "events" e ON t."eventId" = e."id"
         WHERE 
-          "createdAt" >= NOW() - INTERVAL '7 days'
+          t."createdAt" >= NOW() - INTERVAL '7 days'
+          AND e."organizerId" = ${organizer.id}
         GROUP BY "date"
         ORDER BY "date";
       `;
