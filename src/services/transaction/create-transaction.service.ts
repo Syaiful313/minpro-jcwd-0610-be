@@ -1,178 +1,179 @@
-// import prisma from "../../config/prisma";
-// import { ApiError } from "../../utils/api-error";
-// import { generatePaymentCode } from "../../utils/payment"; // Assume this utility exists
+import { Transaction } from "@prisma/client";
+import prisma from "../../config/prisma";
+import { ApiError } from "../../utils/api-error";
+import { TransactionFrontend } from "../../types/transactionFrontend";
 
-// interface CreateTransactionBody {
-//   userId: number;
-//   tickets: { id: number; quantity: number }[];
-//   eventId: number;
-//   paymentMethod: 'BANK_TRANSFER'; // Menambahkan payment method
-// }
+const createTransactionService = async (
+  authUserId: number,
+  body: TransactionFrontend
+) => {
+  if (!body.details || body.details.length === 0) {
+    throw new ApiError(400, "Details cannot be empty");
+  }
 
-// interface TicketPurchaseDetail {
-//   ticketTypeId: number;
-//   quantity: number;
-//   price: number;
-//   subtotal: number;
-// }
+  // Cari user
+  const user = await prisma.user.findUnique({
+    where: { id: authUserId },
+  });
 
-// // Function to calculate total price and validate tickets
-// const processTicketPurchase = async (
-//   prismaClient: any,
-//   tickets: { id: number; quantity: number }[]
-// ): Promise<{ totalPrice: number; purchaseDetails: TicketPurchaseDetail[] }> => {
-//   let totalPrice = 0;
-//   const purchaseDetails: TicketPurchaseDetail[] = [];
+  if (!user) {
+    throw new ApiError(400, "User not found");
+  }
 
-//   for (const ticket of tickets) {
-//     const ticketType = await prismaClient.ticketType.findUnique({
-//       where: { id: ticket.id },
-//       include: {
-//         event: {
-//           select: {
-//             startDate: true,
-//             status: true
-//           }
-//         }
-//       }
-//     });
+  // Ambil eventId dari ticket pertama
+  const firstTicket = await prisma.ticketType.findFirst({
+    where: { id: body.details[0].ticketTypeId },
+    select: { eventId: true },
+  });
 
-//     if (!ticketType) {
-//       throw new ApiError(404, `Ticket type with ID ${ticket.id} not found`);
-//     }
+  if (!firstTicket) {
+    throw new ApiError(400, "First ticket not found");
+  }
 
-//     // Validasi event masih aktif
-//     if (ticketType.event.status !== 'ACTIVE') {
-//       throw new ApiError(400, 'Event is not active for ticket purchase');
-//     }
+  // Pastikan semua tiket berasal dari event yang sama
+  for (const detail of body.details) {
+    const ticket = await prisma.ticketType.findFirst({
+      where: { id: detail.ticketTypeId },
+      select: { eventId: true },
+    });
 
-//     // Validasi event belum dimulai
-//     if (new Date() > ticketType.event.startDate) {
-//       throw new ApiError(400, 'Event has already started, tickets cannot be purchased');
-//     }
+    if (!ticket) {
+      throw new ApiError(400, `Ticket ID ${detail.ticketTypeId} not found`);
+    }
 
-//     // Validasi stok ticket
-//     if (ticketType.quantity < ticket.quantity) {
-//       throw new ApiError(400, `Not enough tickets available for ${ticketType.name}. Only ${ticketType.quantity} left`);
-//     }
+    if (ticket.eventId !== firstTicket.eventId) {
+      throw new ApiError(
+        400,
+        `Ticket ID ${detail.ticketTypeId} is not part of the same event`
+      );
+    }
+  }
 
-//     const subtotal = ticketType.price * ticket.quantity;
-//     totalPrice += subtotal;
+  // Validasi voucher jika ada
+  let voucherDiscount = 0;
+  if (body.voucherCode) {
+    const voucher = await prisma.voucher.findFirst({
+      where: {
+        code: body.voucherCode,
+        eventId: firstTicket.eventId,
+        endDate: { gt: new Date() },
+      },
+    });
 
-//     purchaseDetails.push({
-//       ticketTypeId: ticket.id,
-//       quantity: ticket.quantity,
-//       price: ticketType.price,
-//       subtotal
-//     });
-//   }
+    if (!voucher) {
+      throw new ApiError(400, "Invalid or expired voucher for this event");
+    }
 
-//   return { totalPrice, purchaseDetails };
-// };
+    voucherDiscount = voucher.discount;
+  }
 
-// export const createTransactionService = async (body: CreateTransactionBody) => {
-//   const { userId, tickets, eventId, paymentMethod } = body;
+  // Validasi coupon jika ada
+  let couponDiscount = 0;
+  if (body.couponCode) {
+    const coupon = await prisma.coupon.findFirst({
+      where: {
+        code: body.couponCode,
+        userId: authUserId,
+        isUsed: false,
+      },
+    });
 
-//   // Validate if user exists
-//   const user = await prisma.user.findUnique({
-//     where: { id: userId },
-//     include: {
-//       transactions: {
-//         where: {
-//           status: 'WAITING_FOR_PAYMENT'
-//         }
-//       }
-//     }
-//   });
+    if (coupon) {
+      couponDiscount = coupon.amount;
+    }
+  }
 
-//   if (!user) {
-//     throw new ApiError(404, "User not found");
-//   }
+  // Proses transaksi dengan $transaction
+  const newTransaction = await prisma.$transaction(async (tx) => {
+    let totalToPay = 0;
 
-//   // Cek apakah user masih memiliki transaksi yang pending
-//   if (user.transactions.length > 0) {
-//     throw new ApiError(400, "You have pending transaction. Please complete it first");
-//   }
+    for (const detail of body.details) {
+      const ticket = await tx.ticketType.findFirst({
+        where: { id: detail.ticketTypeId },
+      });
 
-//   // Start transaction with Prisma
-//   const transaction = await prisma.$transaction(async (prismaClient) => {
-//     // Validate event exists and is active
-//     const event = await prismaClient.event.findUnique({
-//       where: { id: eventId }
-//     });
+      if (!ticket) {
+        throw new ApiError(400, `Ticket ID ${detail.ticketTypeId} not found`);
+      }
 
-//     if (!event) {
-//       throw new ApiError(404, "Event not found");
-//     }
+      if (detail.quantity > ticket.quantity) {
+        throw new ApiError(
+          422,
+          `Insufficient stock for Ticket ID ${detail.ticketTypeId}`
+        );
+      }
 
-//     if (event.status !== 'ACTIVE') {
-//       throw new ApiError(400, "Event is not active");
-//     }
+      // Update stok tiket
+      await tx.ticketType.update({
+        where: { id: detail.ticketTypeId },
+        data: { quantity: { decrement: detail.quantity } },
+      });
 
-//     // Process tickets and calculate total price
-//     const { totalPrice, purchaseDetails } = await processTicketPurchase(prismaClient, tickets);
+      // Hitung subtotal per tiket
+      const subtotal = (ticket.price - voucherDiscount) * detail.quantity;
 
-//     // Generate unique payment code
-//     const paymentCode = generatePaymentCode();
+      if (subtotal < 0) {
+        throw new ApiError(400, "Total after discount cannot be negative");
+      }
 
-//     // Set payment deadline (24 hours from now)
-//     const paymentDeadline = new Date();
-//     paymentDeadline.setHours(paymentDeadline.getHours() + 24);
+      totalToPay += subtotal;
+    }
 
-//     // Create new transaction
-//     const newTransaction = await prismaClient.transaction.create({
-//       data: {
-//         userId,
-//         eventId,
-//         totalPrice,
-//         quantity: tickets.reduce((total, ticket) => total + ticket.quantity, 0),
-//         status: "WAITING_FOR_PAYMENT",
-//         paymentMethod,
-//         paymentCode,
-//         paymentDeadline,
-//         createdAt: new Date(),
-//         // Create transaction details
-//         transactionDetails: {
-//           create: purchaseDetails.map(detail => ({
-//             ticketTypeId: detail.ticketTypeId,
-//             quantity: detail.quantity,
-//             price: detail.price,
-//             subtotal: detail.subtotal
-//           }))
-//         }
-//       },
-//       include: {
-//         transactionDetails: true,
-//         event: {
-//           select: {
-//             name: true
-//           }
-//         }
-//       }
-//     });
+    // Kurangi dengan coupon
+    totalToPay -= couponDiscount;
+    totalToPay = totalToPay < 0 ? 0 : totalToPay;
 
-//     // Update ticket quantities
-//     for (const ticket of tickets) {
-//       await prismaClient.ticketType.update({
-//         where: { id: ticket.id },
-//         data: {
-//           quantity: {
-//             decrement: ticket.quantity
-//           }
-//         }
-//       });
-//     }
+    // Gunakan poin
+    const usedPoints = totalToPay < user.point ? totalToPay : user.point;
+    totalToPay -= usedPoints;
 
-//     return newTransaction;
-//   });
+    // Update poin user jika digunakan
+    if (usedPoints > 0) {
+      await tx.user.update({
+        where: { id: authUserId },
+        data: { point: { decrement: usedPoints } },
+      });
+    }
 
-//   return {
-//     ...transaction,
-//     paymentInstructions: {
-//       paymentCode: transaction.paymentCode,
-//       totalAmount: transaction.totalPrice,
-//       paymentDeadline: transaction.paymentDeadline,
-//       status: transaction.status
-//     }
-//   };
-// };
+    // Tandai coupon sebagai dipakai
+    if (body.couponCode && couponDiscount > 0) {
+      await tx.coupon.updateMany({
+        where: {
+          code: body.couponCode,
+          userId: authUserId,
+        },
+        data: { isUsed: true },
+      });
+    }
+
+    // Buat transaksi
+    const transaction = await tx.transaction.create({
+      data: {
+        totalPrice: totalToPay,
+        userId: authUserId,
+        eventId: firstTicket.eventId,
+        pointAmount: usedPoints,
+        usedVoucherCode: body.voucherCode || null,
+        usedPoint: body.usePoints || false,
+      },
+    });
+
+    // Simpan detail transaksi
+    await tx.transactionsDetail.createMany({
+      data: body.details.map((detail) => ({
+        transactionId: transaction.id,
+        ticketTypeId: detail.ticketTypeId,
+        quantity: detail.quantity,
+      })),
+    });
+
+    return transaction;
+  });
+
+  return {
+    message: "Transaction successful",
+    data: newTransaction,
+  };
+};
+
+export default createTransactionService;

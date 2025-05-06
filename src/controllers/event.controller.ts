@@ -62,8 +62,6 @@ export const createEventController = async (
   next: NextFunction
 ) => {
   try {
-    console.log("Request Body:", req.body);
-    console.log("Files:", req.files);
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     const thumbnail = files.thumbnail?.[0];
     if (!thumbnail) {
