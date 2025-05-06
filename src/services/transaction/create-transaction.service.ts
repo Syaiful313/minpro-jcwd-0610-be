@@ -83,6 +83,10 @@ const createTransactionService = async (
     }
   }
 
+  // Hitung waktu expired (2 jam dari sekarang)
+  const expiredAt = new Date();
+  expiredAt.setHours(expiredAt.getHours() + 2);
+
   // Proses transaksi dengan $transaction
   const newTransaction = await prisma.$transaction(async (tx) => {
     let totalToPay = 0;
@@ -146,7 +150,7 @@ const createTransactionService = async (
       });
     }
 
-    // Buat transaksi
+    // Buat transaksi dengan status & expiredAt
     const transaction = await tx.transaction.create({
       data: {
         totalPrice: totalToPay,
@@ -155,6 +159,8 @@ const createTransactionService = async (
         pointAmount: usedPoints,
         usedVoucherCode: body.voucherCode || null,
         usedPoint: body.usePoints || false,
+        status: "WAITING_FOR_PAYMENT", // 🔥 Status awal
+        expiredAt, // 🔥 Waktu kedaluwarsa
       },
     });
 

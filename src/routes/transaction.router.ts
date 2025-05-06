@@ -1,10 +1,29 @@
 import { Router } from "express";
-import { getSamplesController } from "../controllers/sample.controller";
-import { createTransactionController } from "../controllers/transaction.controller";
+import {
+  createTransactionController,
+  getTransactionByIdController,
+  uploadPaymentProofController,
+} from "../controllers/transaction.controller";
 import { verifyToken } from "../lib/jwt";
+import { UploaderMiddleware } from "../middlewares/uploader.middleware";
 
 const router = Router();
+const uploaderMiddleware = new UploaderMiddleware();
 
-router.post("/create",verifyToken, createTransactionController);
+// Contoh middleware upload file dengan filter
+const paymentProofUpload = uploaderMiddleware.upload(5).single("paymentProof"); // Max 5MB
+const paymentProofFilter = uploaderMiddleware.fileFilter(["image/jpeg", "image/png"]);
+
+router.post("/create", verifyToken, createTransactionController);
+router.get("/:id", verifyToken, getTransactionByIdController);
+
+// 🔁 Tambahkan route upload bukti transfer
+router.post(
+  "/upload-proof/:id",
+  verifyToken,
+  paymentProofUpload,
+  paymentProofFilter,
+  uploadPaymentProofController
+);
 
 export default router;
