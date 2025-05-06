@@ -72,13 +72,13 @@ export const getOrganizerTransactionsService = async (
             endDate: true,
           },
         },
-        ticketType: {
-          select: {
-            id: true,
-            name: true,
-            price: true,
-          },
-        },
+        // ticketType: {
+        //   select: {
+        //     id: true,
+        //     name: true,
+        //     price: true,
+        //   },
+        // },
       },
       skip: (page - 1) * take,
       take,

@@ -1,68 +1,3 @@
-// import prisma from "../../config/prisma";
-// import { ApiError } from "../../utils/api-error";
-
-// // export const getEventBySlugService = async (slug: string) => {
-// //   const event = await prisma.event.findFirst({
-// //     where: { slug, deletedAt: null },
-// //     include: {
-// //       ticketTypes: true,
-// //       vouchers: {
-// //         where: {
-// //           endDate: {
-// //             gte: new Date(),
-// //           },
-// //         },
-// //       },
-// //     },
-// //   });
-
-// //   if (!event) {
-// //     throw new ApiError(400, "Event not found");
-// //   }
-
-// //   return event;
-// // };
-
-// export const getEventBySlugService = async (slug: string) => {
-//   const event = await prisma.event.findFirst({
-//     where: { slug, deletedAt: null },
-//     include: {
-//       ticketTypes: {
-//         select: {
-//           name: true,
-//           price: true,
-//           quantity: true,
-//         },
-//       },
-//       vouchers: {
-//         where: {
-//           endDate: {  
-//             gte: new Date(),
-//           },
-//         },
-//       },
-//       organizer: {
-//         select: {
-//           companyName: true,
-//         },
-//       },
-//     },
-//   });
-
-//   if (!event) {
-//     throw new ApiError(400, "Event not found");
-//   }
-
-//   return {
-//     ...event,
-//     tickets: event.ticketTypes.map((ticket) => ({
-//       type: ticket.name,
-//       price: ticket.price,
-//       totalSeat: ticket.quantity,
-//     })),
-//   };
-// };
-
 import prisma from "../../config/prisma";
 import { ApiError } from "../../utils/api-error";
 
@@ -98,7 +33,7 @@ interface Event {
   slug: string;
   name: string;
   thumbnail: string;
-  category: 'Sports' | 'Festivals' | 'Concerts' | 'Theater';
+  category: "Sports" | "Festivals" | "Concerts" | "Theater";
   location: string;
   description: string;
   startDate: Date;
@@ -111,9 +46,9 @@ interface Event {
 
 export const getEventBySlugService = async (slug: string) => {
   const event = await prisma.event.findFirst({
-    where: { 
+    where: {
       slug,
-      deletedAt: null 
+      deletedAt: null,
     },
     include: {
       organizer: {
@@ -129,8 +64,8 @@ export const getEventBySlugService = async (slug: string) => {
           quantity: true,
           description: true,
           createdAt: true,
-          updatedAt: true
-        }
+          updatedAt: true,
+        },
       },
       vouchers: {
         where: {
@@ -146,9 +81,9 @@ export const getEventBySlugService = async (slug: string) => {
           usageCount: true,
           startDate: true,
           endDate: true,
-        }
-      }
-    }
+        },
+      },
+    },
   });
 
   if (!event) {
@@ -174,7 +109,7 @@ export const getEventBySlugService = async (slug: string) => {
       totalSeat: ticket.quantity,
       description: ticket.description,
       createdAt: ticket.createdAt,
-      updatedAt: ticket.updatedAt
+      updatedAt: ticket.updatedAt,
     })),
     vouchers: event.vouchers.map((voucher) => ({
       id: voucher.id,
@@ -183,9 +118,9 @@ export const getEventBySlugService = async (slug: string) => {
       maxUsage: voucher.maxUsage,
       usageCount: voucher.usageCount,
       startDate: voucher.startDate,
-      endDate: voucher.endDate
+      endDate: voucher.endDate,
     })),
     createdAt: event.createdAt,
-    updatedAt: event.updatedAt
+    updatedAt: event.updatedAt,
   };
 };

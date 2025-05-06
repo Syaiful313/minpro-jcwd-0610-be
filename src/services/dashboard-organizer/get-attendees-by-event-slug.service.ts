@@ -71,13 +71,13 @@ export const getAttendeesByEventSlugService = async (
         },
         status: true,
         event: { select: { name: true } },
-        quantity: true,
+        // quantity: true,
         totalPrice: true,
-        ticketType: {
-          select: {
-            name: true,
-          },
-        },
+        // ticketType: {
+        //   select: {
+        //     name: true,
+        //   },
+        // },
       },
     });
 
