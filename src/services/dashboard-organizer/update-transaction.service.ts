@@ -1,6 +1,7 @@
 import { TransactionStatus } from "@prisma/client";
 import prisma from "../../config/prisma";
 import { sendTransactionEmail } from "../../lib/handlebars";
+import { ApiError } from "../../utils/api-error";
 
 interface UpdateTransactionsBody {
   transactionId: number;
@@ -14,34 +15,42 @@ export const updateTransactionService = async (
 ) => {
   try {
     const user = await prisma.user.findFirst({
-      where: { id: userId },
+      where: { id: userId, isDeleted: false },
     });
 
     if (!user) {
-      throw new Error("ID pengguna tidak valid");
+      throw new ApiError(404, "ID pengguna tidak valid");
     }
 
     if (user.role !== "ORGANIZER") {
-      throw new Error("Anda bukan penyelenggara acara");
+      throw new ApiError(403, "Anda bukan penyelenggara acara");
     }
 
     const { isAccepted, isRejected, transactionId } = body;
 
     if (!transactionId) {
-      throw new Error("ID transaksi tidak boleh kosong");
+      throw new ApiError(400, "ID transaksi tidak boleh kosong");
     }
 
     if (isAccepted === undefined && isRejected === undefined) {
-      throw new Error("Anda perlu menerima atau menolak transaksi");
+      throw new ApiError(400, "Anda perlu menerima atau menolak transaksi");
     }
 
     const transaction = await prisma.transaction.findFirst({
-      where: { id: transactionId },
-      include: { event: true, ticketType: true, user: true }
+      where: { id: transactionId, deletedAt: null },
+      include: {
+        event: true,
+        user: true,
+        transactionsDetails: {
+          include: {
+            ticketType: true,
+          },
+        },
+      },
     });
 
     if (!transaction) {
-      throw new Error("Transaksi tidak ditemukan");
+      throw new ApiError(404, "Transaksi tidak ditemukan");
     }
 
     const organizer = await prisma.organizer.findFirst({
@@ -49,18 +58,19 @@ export const updateTransactionService = async (
     });
 
     if (!organizer) {
-      throw new Error("Data penyelenggara tidak ditemukan");
+      throw new ApiError(404, "Data penyelenggara tidak ditemukan");
     }
 
     const event = await prisma.event.findFirst({
-      where: { 
+      where: {
         id: transaction.eventId,
-        organizerId: organizer.id
+        organizerId: organizer.id,
+        deletedAt: null,
       },
     });
 
     if (!event) {
-      throw new Error("Anda bukan penyelenggara acara ini");
+      throw new ApiError(403, "Anda bukan penyelenggara acara ini");
     }
 
     if (transaction.status === TransactionStatus.WAITING_FOR_PAYMENT) {
@@ -106,23 +116,23 @@ export const updateTransactionService = async (
 
         if (transaction.usedVoucherCode) {
           const voucher = await prisma.voucher.findFirst({
-            where: { code: transaction.usedVoucherCode }
+            where: { code: transaction.usedVoucherCode },
           });
-          
+
           if (voucher) {
             await prisma.voucher.update({
               where: { id: voucher.id },
               data: {
-                usageCount: { decrement: 1 }
-              }
+                usageCount: { decrement: 1 },
+              },
             });
           }
         }
 
-        if (transaction.ticketTypeId) {
+        for (const detail of transaction.transactionsDetails) {
           await prisma.ticketType.update({
-            where: { id: transaction.ticketTypeId },
-            data: { quantity: { increment: transaction.quantity } },
+            where: { id: detail.ticketType.id },
+            data: { quantity: { increment: detail.quantity } },
           });
         }
 
@@ -133,17 +143,23 @@ export const updateTransactionService = async (
           });
         }
 
-        const ticketType = transaction.ticketType;
-        const ticketPrice = ticketType ? ticketType.price : 0;
-        const totalPriceBeforeDiscount = transaction.quantity * ticketPrice;
+        const totalPriceBeforeDiscount = transaction.transactionsDetails.reduce(
+          (total, detail) => total + detail.quantity * detail.ticketType.price,
+          0
+        );
         const totalDiscount = totalPriceBeforeDiscount - transaction.totalPrice;
+
+        const totalQuantity = transaction.transactionsDetails.reduce(
+          (sum, detail) => sum + detail.quantity,
+          0
+        );
 
         if (transaction.user && transaction.user.email) {
           await sendTransactionEmail({
             email: transaction.user.email,
             name: transaction.user.fullName,
             transactionStatus: "Ditolak",
-            ticketQuantity: String(transaction.quantity),
+            ticketQuantity: String(totalQuantity),
             totalDiscount: totalDiscount.toFixed(2),
             total: transaction.totalPrice.toFixed(2),
             totalPrice: totalPriceBeforeDiscount.toFixed(2),
@@ -162,20 +178,27 @@ export const updateTransactionService = async (
           where: { id: transactionId },
           data: {
             status: TransactionStatus.DONE,
+            acceptedAt: new Date(),
           },
         });
 
-        const ticketType = transaction.ticketType;
-        const ticketPrice = ticketType ? ticketType.price : 0;
-        const totalPriceBeforeDiscount = transaction.quantity * ticketPrice;
+        const totalPriceBeforeDiscount = transaction.transactionsDetails.reduce(
+          (total, detail) => total + detail.quantity * detail.ticketType.price,
+          0
+        );
         const totalDiscount = totalPriceBeforeDiscount - transaction.totalPrice;
+
+        const totalQuantity = transaction.transactionsDetails.reduce(
+          (sum, detail) => sum + detail.quantity,
+          0
+        );
 
         if (transaction.user && transaction.user.email) {
           await sendTransactionEmail({
             email: transaction.user.email,
             name: transaction.user.fullName,
             transactionStatus: "Diterima",
-            ticketQuantity: String(transaction.quantity),
+            ticketQuantity: String(totalQuantity),
             totalDiscount: totalDiscount.toFixed(2),
             total: transaction.totalPrice.toFixed(2),
             totalPrice: totalPriceBeforeDiscount.toFixed(2),

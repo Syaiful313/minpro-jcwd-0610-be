@@ -1,59 +1,64 @@
-// src/services/organizerDashboardService.ts
-
 import prisma from "../../config/prisma";
+import { ApiError } from "../../utils/api-error";
 
 export const getOrganizerDashboardDataService = async (userId: number) => {
   try {
-    // Verifikasi user adalah organizer
     const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: userId, isDeleted: false },
       include: { organizer: true },
     });
 
-    if (!user || !user.organizer) {
-      throw new Error("User bukan organizer");
+    if (!user) {
+      throw new ApiError(404, "User tidak ditemukan");
+    }
+
+    if (user.role !== "ORGANIZER") {
+      throw new ApiError(403, "Anda bukan organizer");
+    }
+
+    if (!user.organizer) {
+      throw new ApiError(404, "Data organizer tidak ditemukan");
     }
 
     const organizerId = user.organizer.id;
 
-    // Mendapatkan nama organizer
     const organizerName = user.organizer.companyName;
 
-    // Mendapatkan total pendapatan (dari transaksi dengan status DONE)
     const totalRevenue = await prisma.transaction.aggregate({
       where: {
         event: {
           organizerId: organizerId,
         },
         status: "DONE",
+        deletedAt: null,
       },
       _sum: {
         totalPrice: true,
       },
     });
 
-    // Mendapatkan jumlah event yang dibuat organizer
     const totalEvents = await prisma.event.count({
       where: {
         organizerId: organizerId,
-        deletedAt: null, // Hanya menghitung event yang tidak dihapus
+        deletedAt: null,
       },
     });
 
-    // Mendapatkan jumlah tiket yang terjual (status DONE)
-    const ticketsSold = await prisma.transaction.aggregate({
+    const ticketsSold = await prisma.transactionsDetail.aggregate({
       where: {
-        event: {
-          organizerId: organizerId,
+        transaction: {
+          event: {
+            organizerId: organizerId,
+          },
+          status: "DONE",
+          deletedAt: null,
         },
-        status: "DONE",
       },
       _sum: {
         quantity: true,
       },
     });
 
-    // Mendapatkan persentase pertumbuhan pendapatan (dibandingkan dengan bulan lalu)
     const today = new Date();
     const firstDayCurrentMonth = new Date(
       today.getFullYear(),
@@ -65,15 +70,14 @@ export const getOrganizerDashboardDataService = async (userId: number) => {
       today.getMonth() - 1,
       1
     );
-    const lastDayLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
 
-    // Pendapatan bulan ini
     const currentMonthRevenue = await prisma.transaction.aggregate({
       where: {
         event: {
           organizerId: organizerId,
         },
         status: "DONE",
+        deletedAt: null,
         createdAt: {
           gte: firstDayCurrentMonth,
         },
@@ -83,13 +87,13 @@ export const getOrganizerDashboardDataService = async (userId: number) => {
       },
     });
 
-    // Pendapatan bulan lalu
     const lastMonthRevenue = await prisma.transaction.aggregate({
       where: {
         event: {
           organizerId: organizerId,
         },
         status: "DONE",
+        deletedAt: null,
         createdAt: {
           gte: firstDayLastMonth,
           lt: firstDayCurrentMonth,
@@ -100,7 +104,6 @@ export const getOrganizerDashboardDataService = async (userId: number) => {
       },
     });
 
-    // Menghitung persentase pertumbuhan pendapatan
     const currentRevenue = currentMonthRevenue._sum.totalPrice || 0;
     const lastRevenue = lastMonthRevenue._sum.totalPrice || 0;
 
@@ -108,10 +111,9 @@ export const getOrganizerDashboardDataService = async (userId: number) => {
     if (lastRevenue > 0) {
       revenueGrowth = ((currentRevenue - lastRevenue) / lastRevenue) * 100;
     } else if (currentRevenue > 0) {
-      revenueGrowth = 100; // Jika bulan lalu 0 tapi bulan ini > 0, pertumbuhan 100%
+      revenueGrowth = 100;
     }
 
-    // Persentase pertumbuhan customer baru (berdasarkan transaksi unik)
     const currentMonthCustomers = await prisma.transaction.groupBy({
       by: ["userId"],
       where: {
@@ -119,6 +121,7 @@ export const getOrganizerDashboardDataService = async (userId: number) => {
           organizerId: organizerId,
         },
         status: "DONE",
+        deletedAt: null,
         createdAt: {
           gte: firstDayCurrentMonth,
         },
@@ -132,6 +135,7 @@ export const getOrganizerDashboardDataService = async (userId: number) => {
           organizerId: organizerId,
         },
         status: "DONE",
+        deletedAt: null,
         createdAt: {
           gte: firstDayLastMonth,
           lt: firstDayCurrentMonth,
