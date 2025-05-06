@@ -3,9 +3,9 @@ import { createEventService } from "../services/event/create-event.service";
 import { deleteEventService } from "../services/event/delete-event.service";
 import { getEventBySlugService } from "../services/event/get-event-by-slug.service";
 import { getEventsService } from "../services/event/get-events.service";
-import { updateEventService } from "../services/event/update-event.service";
 import { ApiError } from "../utils/api-error";
-import { getEventService } from "../services/event/get-event.service";
+import { getEventByIdService } from "../services/event/get-event-by-id.service";
+import { updateEventService } from "../services/event/update-event.service";
 
 export const getEventsController = async (
   req: Request,
@@ -27,22 +27,6 @@ export const getEventsController = async (
   }
 };
 
-export const getEventController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const { id } = req.params;
-
-    const result = await getEventService(id);
-
-    res.status(200).send(result);
-  } catch (error) {
-    next(error);
-  }
-};
-
 export const getEventBySlugController = async (
   req: Request,
   res: Response,
@@ -50,6 +34,54 @@ export const getEventBySlugController = async (
 ) => {
   try {
     const result = await getEventBySlugService(req.params.slug);
+    res.status(200).send(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getEventByIdController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const eventId = Number(req.params.id);
+    const userId = res.locals.user.id;
+
+    if (isNaN(eventId)) {
+      throw new ApiError(400, "Invalid event ID");
+    }
+
+    const result = await getEventByIdService(eventId, userId);
+    res.status(200).send(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateEventController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const eventId = Number(req.params.id);
+
+    if (isNaN(eventId)) {
+      throw new ApiError(400, "Invalid event ID");
+    }
+
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const thumbnail = files?.thumbnail?.[0];
+    const userId = res.locals.user.id;
+
+    const result = await updateEventService(
+      eventId,
+      req.body,
+      userId,
+      thumbnail
+    );
     res.status(200).send(result);
   } catch (error) {
     next(error);
@@ -70,31 +102,6 @@ export const createEventController = async (
 
     const userId = res.locals.user.id;
     const result = await createEventService(req.body, thumbnail, userId);
-    res.status(200).send(result);
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const updateEventController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const userId = res.locals.user.id;
-
-    if (!userId) {
-      res.status(401).json({
-        status: "error",
-        message: "Anda harus login terlebih dahulu",
-      });
-      return;
-    }
-
-    const thumbnail = req.file;
-    const result = await updateEventService(req.body, thumbnail, userId);
-
     res.status(200).send(result);
   } catch (error) {
     next(error);
