@@ -1,9 +1,10 @@
 import { Prisma, TransactionStatus } from "@prisma/client";
 import prisma from "../../config/prisma";
 import { PaginationQueryParams } from "../../types/pagination";
+import { ApiError } from "../../utils/api-error";
 
 interface GetAttendeeQuery extends PaginationQueryParams {
-  search: string;
+  search?: string;
 }
 
 export const getAttendeesByEventSlugService = async (
@@ -13,15 +14,15 @@ export const getAttendeesByEventSlugService = async (
 ) => {
   try {
     const user = await prisma.user.findFirst({
-      where: { id: userId },
+      where: { id: userId, isDeleted: false },
     });
 
     if (!user) {
-      throw new Error("Invalid user id");
+      throw new ApiError(404, "Invalid user id");
     }
 
     if (user.role !== "ORGANIZER") {
-      throw new Error("You are not an organizer");
+      throw new ApiError(403, "You are not an organizer");
     }
 
     const organizer = await prisma.organizer.findFirst({
@@ -29,26 +30,33 @@ export const getAttendeesByEventSlugService = async (
     });
 
     if (!organizer) {
-      throw new Error("Organizer profile not found");
+      throw new ApiError(404, "Organizer profile not found");
     }
 
     const event = await prisma.event.findFirst({
-      where: { slug: eventSlug },
+      where: { slug: eventSlug, deletedAt: null },
     });
 
     if (!event) {
-      throw new Error("Invalid event slug");
+      throw new ApiError(404, "Invalid event slug");
     }
 
     if (event.organizerId !== organizer.id) {
-      throw new Error("You are not authorized to view this event");
+      throw new ApiError(403, "You are not authorized to view this event");
     }
 
-    const { page, sortBy, sortOrder, take, search } = query;
+    const {
+      page = 1,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+      take = 10,
+      search,
+    } = query;
 
     const whereClause: Prisma.TransactionWhereInput = {
       event: { slug: eventSlug },
       status: TransactionStatus.DONE,
+      deletedAt: null,
       ...(search && {
         OR: [{ user: { email: { contains: search, mode: "insensitive" } } }],
       }),
@@ -71,20 +79,48 @@ export const getAttendeesByEventSlugService = async (
         },
         status: true,
         event: { select: { name: true } },
-        // quantity: true,
         totalPrice: true,
-        // ticketType: {
-        //   select: {
-        //     name: true,
-        //   },
-        // },
+        transactionsDetails: {
+          select: {
+            quantity: true,
+            ticketType: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
       },
+    });
+
+    const transformedTransactions = transactions.map((transaction) => {
+      const totalQuantity = transaction.transactionsDetails.reduce(
+        (sum, detail) => sum + detail.quantity,
+        0
+      );
+
+      const ticketTypes = transaction.transactionsDetails.map(
+        (detail) => detail.ticketType.name
+      );
+
+      return {
+        id: transaction.id,
+        user: transaction.user,
+        status: transaction.status,
+        event: transaction.event,
+        quantity: totalQuantity,
+        totalPrice: transaction.totalPrice,
+
+        ticketType: {
+          name: ticketTypes.join(", "),
+        },
+      };
     });
 
     const count = await prisma.transaction.count({ where: whereClause });
     return {
-      data: transactions,
-      meta: { page, take, total: count },
+      data: transformedTransactions,
+      meta: { page, take, total: count, totalPages: Math.ceil(count / take) },
     };
   } catch (error) {
     throw error;

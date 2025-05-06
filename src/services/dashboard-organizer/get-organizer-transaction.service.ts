@@ -1,6 +1,6 @@
 import { Prisma, TransactionStatus } from "@prisma/client";
-import { PaginationQueryParams } from "../../types/pagination";
 import prisma from "../../config/prisma";
+import { PaginationQueryParams } from "../../types/pagination";
 import { ApiError } from "../../utils/api-error";
 
 interface GetTransactionsQuery extends PaginationQueryParams {
@@ -14,20 +14,20 @@ export const getOrganizerTransactionsService = async (
 ) => {
   try {
     const user = await prisma.user.findFirst({
-      where: { id: userId },
+      where: { id: userId, isDeleted: false },
       include: { organizer: true },
     });
 
     if (!user) {
-      throw new ApiError(404,"User tidak ditemukan");
+      throw new ApiError(404, "User tidak ditemukan");
     }
 
     if (user.role !== "ORGANIZER") {
-      throw new ApiError(403,"Anda bukan organizer");
+      throw new ApiError(403, "Anda bukan organizer");
     }
 
     if (!user.organizer) {
-      throw new ApiError(404,"Data organizer tidak ditemukan");
+      throw new ApiError(404, "Data organizer tidak ditemukan");
     }
 
     const {
@@ -72,13 +72,17 @@ export const getOrganizerTransactionsService = async (
             endDate: true,
           },
         },
-        // ticketType: {
-        //   select: {
-        //     id: true,
-        //     name: true,
-        //     price: true,
-        //   },
-        // },
+        transactionsDetails: {
+          include: {
+            ticketType: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+              },
+            },
+          },
+        },
       },
       skip: (page - 1) * take,
       take,
