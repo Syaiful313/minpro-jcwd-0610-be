@@ -1,12 +1,8 @@
 import { Role, User } from "@prisma/client";
+import nanoid from "nanoid";
 import prisma from "../../config/prisma";
 import { hashPassword } from "../../lib/argon";
 import { ApiError } from "../../utils/api-error";
-
-const getNanoid = async () => {
-  const { nanoid } = await import("nanoid");
-  return nanoid;
-};
 
 export const registerService = async (
   body: Omit<
@@ -31,8 +27,7 @@ export const registerService = async (
     throw new ApiError(400, "Email already exists");
   }
 
-  const nanoidFn = await getNanoid();
-  const referralCode = nanoidFn(8);
+  const referralCode = nanoid(8);
   const hashedPassword = await hashPassword(body.password);
 
   const { referralCode: inputReferralCode, ...userData } = body;
@@ -62,20 +57,18 @@ export const registerService = async (
   });
 
   if (referredById) {
-    const nanoidForReferral = await getNanoid();
     await prisma.referral.create({
       data: {
         userId: user.id,
         pointsAwarded: 10000,
-        discountCoupon: `WELCOME-${nanoidForReferral(8)}`,
+        discountCoupon: `WELCOME-${nanoid(8)}`, // Langsung gunakan nanoid
       },
     });
 
-    const nanoidForCoupon = await getNanoid();
     await prisma.coupon.create({
       data: {
         userId: user.id,
-        code: `WELCOME-${nanoidForCoupon(8)}`,
+        code: `WELCOME-${nanoid(8)}`, // Langsung gunakan nanoid
         discount: 10,
         amount: 1,
         expirationDate: new Date(
