@@ -2,11 +2,11 @@ import { TransactionStatus } from "@prisma/client";
 import { NextFunction, Request, Response } from "express";
 import { DeleteEventService } from "../services/dashboard-organizer/delete-organizer-event.service";
 import { getAttendeesByEventSlugService } from "../services/dashboard-organizer/get-attendees-by-event-slug.service";
+import { getOrganizerDashboardDataService } from "../services/dashboard-organizer/get-organizer-dashboard-data.service";
 import { getOrganizerEventsService } from "../services/dashboard-organizer/get-organizer-events.service";
 import { getOrganizerTransactionsService } from "../services/dashboard-organizer/get-organizer-transaction.service";
 import { getTransactionStatusChartService } from "../services/dashboard-organizer/get-transaction-chart-data.service";
 import { updateTransactionService } from "../services/dashboard-organizer/update-transaction.service";
-import { getOrganizerDashboardDataService } from "../services/dashboard-organizer/get-organizer-dashboard-data.service";
 
 export const getOrganizerEventsController = async (
   req: Request,
@@ -62,13 +62,13 @@ export const getTransactionStatusChartController = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    // Mengambil parameter dari query
+    const userId = res.locals.user.id;
+
     const query = {
       timeRange:
         (req.query.timeRange as "7d" | "30d" | "90d" | "365d") || "365d",
     };
 
-    // Validasi parameter
     if (!["7d", "30d", "90d", "365d"].includes(query.timeRange)) {
       res.status(400).json({
         message:
@@ -77,11 +77,9 @@ export const getTransactionStatusChartController = async (
       return;
     }
 
-    // Memanggil service
-    const results = await getTransactionStatusChartService(query);
+    const results = await getTransactionStatusChartService(query, userId);
 
-    // Mengembalikan hasil
-    res.status(200).json(results);
+    res.status(200).send(results);
   } catch (error) {
     next(error);
   }
@@ -159,7 +157,6 @@ export const updateTransactionController = async (
   try {
     const { transactionId, isAccepted, isRejected } = req.body;
 
-    // Mengubah format permintaan untuk disesuaikan dengan service yang telah diperbarui
     const result = await updateTransactionService(res.locals.user.id, {
       transactionId,
       isAccepted,

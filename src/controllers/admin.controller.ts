@@ -1,5 +1,7 @@
 import { NextFunction, Request, Response } from "express";
+import { getPendingOrganizerService } from "../services/admin/get-pending-organizer.service";
 import { getUsersService } from "../services/admin/get-users.service";
+import { rejectOrganizerService } from "../services/admin/reject-organizer.service";
 import { updateUserRoleService } from "../services/admin/update-user-role.service";
 
 export const getUsersController = async (
@@ -38,6 +40,34 @@ export const updateUserRoleController = async (
 ) => {
   try {
     const result = await updateUserRoleService(req.body, res.locals.user.id);
+    res.status(200).send(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const rejectOrganizerController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const result = await rejectOrganizerService(req.body, res.locals.user.id);
+    res.status(200).send(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getPendingOrganizerController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = res.locals.user.id;
+
+    const result = await getPendingOrganizerService(userId);
     res.status(200).send(result);
   } catch (error) {
     next(error);
