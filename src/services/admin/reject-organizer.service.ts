@@ -6,7 +6,7 @@ interface UpdateUserRoleBody {
   userIdTarget: number;
 }
 
-export const updateUserRoleService = async (
+export const rejectOrganizerService = async (
   body: UpdateUserRoleBody,
   userId: number
 ) => {
@@ -37,25 +37,20 @@ export const updateUserRoleService = async (
       throw new ApiError(400, "User already accepted as organizer");
     }
 
-    await prisma.user.update({
-      where: { id: userIdTarget },
-      data: { role: Role.ORGANIZER },
-    });
-
-    await prisma.organizer.update({
+    await prisma.organizer.delete({
       where: { userId: userIdTarget },
-      data: { acceptedAt: new Date() },
     });
 
     await prisma.notification.create({
       data: {
         userId: userIdTarget,
         type: "INFORMATION",
-        message: "Selamat! Permohonan Anda menjadi Organizer telah disetujui.",
+        message:
+          "Maaf, permohonan Anda menjadi Organizer telah ditolak. Anda dapat mengajukan kembali di lain waktu.",
       },
     });
 
-    return { message: "Update user role success" };
+    return { message: "Organizer application rejected" };
   } catch (error) {
     throw error;
   }
