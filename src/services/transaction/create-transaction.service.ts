@@ -159,8 +159,8 @@ const createTransactionService = async (
         pointAmount: usedPoints,
         usedVoucherCode: body.voucherCode || null,
         usedPoint: body.usePoints || false,
-        status: "WAITING_FOR_PAYMENT", // 🔥 Status awal
-        expiredAt, // 🔥 Waktu kedaluwarsa
+        status: "WAITING_FOR_PAYMENT", 
+        expiredAt, 
       },
     });
 

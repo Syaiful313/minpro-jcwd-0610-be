@@ -1,22 +1,27 @@
 import { Router } from "express";
 import {
   createEventController,
+  createReviewController,
   deleteEventController,
   getEventByIdController,
   getEventBySlugController,
   getEventsController,
+  getReviewsByEventIdController,
   updateEventController,
 } from "../controllers/event.controller";
 import { fileFilter } from "../lib/fileFilter";
 import { verifyToken } from "../lib/jwt";
 import { uploader } from "../lib/multer";
-import { validateCreateEvent, validateUpdateEvent } from "../validators/event.validator";
+import {
+  validateCreateEvent,
+  validateUpdateEvent,
+} from "../validators/event.validator";
 
 const router = Router();
 
 router.get("/", getEventsController);
 router.get("/:slug", getEventBySlugController);
-router.get("/id/:id", verifyToken, getEventByIdController);
+router.get("/:id", verifyToken, getEventByIdController);
 router.post(
   "/createevent",
   verifyToken,
@@ -34,5 +39,7 @@ router.patch(
   updateEventController
 );
 router.delete("/:id", verifyToken, deleteEventController);
+router.post("/createreview", verifyToken, createReviewController);
+router.get("/reviews/:eventId", getReviewsByEventIdController);
 
 export default router;

@@ -6,6 +6,8 @@ import { getEventsService } from "../services/event/get-events.service";
 import { ApiError } from "../utils/api-error";
 import { getEventByIdService } from "../services/event/get-event-by-id.service";
 import { updateEventService } from "../services/event/update-event.service";
+import { createReviewService } from "../services/event/create-review.service";
+import { getReviewsByEventIdService } from "../services/event/get-review-event.service";
 
 export const getEventsController = async (
   req: Request,
@@ -118,6 +120,53 @@ export const deleteEventController = async (
     const userId = res.locals.user.id;
     const result = await deleteEventService(Number(req.params.id), userId);
     res.status(200).send(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createReviewController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const authUserId = Number(res.locals.user.id); // Dari middleware JWT
+    const { eventId, rating, review } = req.body;
+
+    if (!eventId || !rating) {
+      throw new ApiError(400, "Data tidak lengkap");
+    }
+
+    const createdReview = await createReviewService(
+      authUserId,
+      Number(eventId),
+      Number(rating),
+      review
+    );
+
+    res.status(201).json(createdReview);
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+export const getReviewsByEventIdController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { eventId } = req.params;
+
+    if (!eventId || isNaN(Number(eventId))) {
+      throw new ApiError(400, "ID event tidak valid");
+    }
+
+    const reviews = await getReviewsByEventIdService(Number(eventId));
+    res.status(200).json(reviews);
   } catch (error) {
     next(error);
   }

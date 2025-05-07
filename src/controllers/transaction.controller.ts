@@ -4,6 +4,7 @@ import getTransactionByIdService from "../services/transaction/get-transactionBy
 import uploadPaymentProofService from "../services/transaction/upload-payment-proof.service";
 import { cloudinaryUpload } from "../lib/cloudinary";
 import { ApiError } from "../utils/api-error";
+import getTransactionsByUserService from "../services/transaction/get-transactionByUser.service";
 
 export const createTransactionController = async (
     req: Request,
@@ -85,3 +86,26 @@ export const uploadPaymentProofController = async (
     next(error);
   }
 };
+
+
+
+export const getTransactionsByUserController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const authUserId = Number(res.locals.user.id); // Sesuaikan cara ambil user
+
+    if (isNaN(authUserId)) {
+      throw new ApiError(400, "User ID tidak valid");
+    }
+
+    const result = await getTransactionsByUserService(authUserId);
+    res.status(200).json(result);
+  } catch (error: any) {
+    next(error);
+  }
+};
+
+

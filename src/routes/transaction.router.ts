@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   createTransactionController,
   getTransactionByIdController,
+  getTransactionsByUserController,
   uploadPaymentProofController,
 } from "../controllers/transaction.controller";
 import { verifyToken } from "../lib/jwt";
@@ -25,5 +26,6 @@ router.post(
   paymentProofFilter,
   uploadPaymentProofController
 );
+router.get("/", verifyToken, getTransactionsByUserController);
 
 export default router;
