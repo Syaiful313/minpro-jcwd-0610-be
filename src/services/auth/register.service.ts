@@ -1,5 +1,5 @@
 import { Role, User } from "@prisma/client";
-import nanoid from "nanoid";
+import { nanoid } from "nanoid";
 import prisma from "../../config/prisma";
 import { hashPassword } from "../../lib/argon";
 import { ApiError } from "../../utils/api-error";
